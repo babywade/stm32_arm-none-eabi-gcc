@@ -15,8 +15,9 @@ jobs:
     - uses: actions/checkout@v3
     # - name: configure
     #   run: ./configure
-    - name: cd
-      run: cd ./F103ZET
+    - name: |
+            cd ./F103ZET
+            make
     - name: make
       run: make
     - name: make distcheck
