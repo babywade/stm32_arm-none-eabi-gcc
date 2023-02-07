@@ -16,7 +16,7 @@ jobs:
     # - name: configure
     #   run: ./configure
     - name: make
-      run: cd F103ZET
+      run: cd ./F103ZET
            make
     - name: make check
       run: make check
