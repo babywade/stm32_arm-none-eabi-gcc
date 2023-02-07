@@ -17,6 +17,7 @@ jobs:
     #   run: ./configure
     - name: make
       run:  |
+            sudo apt-get install gcc-arm-none-eabi
             cd ./F103ZET
             make
     # - name: make
