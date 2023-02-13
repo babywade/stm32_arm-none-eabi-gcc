@@ -11,3 +11,5 @@ make
 
 STM32Cube 初始化代码生成器
 (https://www.st.com/resource/en/data_brief/stm32cubemx.pdf "Download datasheet")
+
+所有外设硬件的初始化代码都可以通过去抄 CubeMX 自动生成的初始化代码。重要的是搞懂硬件逻辑，比如硬件连接的是哪个 GPIO 口，板子上一共有几组 GPIO，几个 PIN 供你使用。
