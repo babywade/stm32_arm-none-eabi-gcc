@@ -38,13 +38,13 @@ typedef __IO uint8_t vu8;
 typedef struct {
     s16 qI_Component1;
     s16 qI_Component2;
-} Curr_Component;
+} Curr_Components;
 
 // 电压值结构体
 typedef struct {
     s16 qV_Component1;
     s16 qV_Component2;
-} Void_Component;
+} Volt_Components;
 
 // 角度结构体
 typedef struct {

@@ -52,4 +52,21 @@ void FOC_Model(void);
 // 系统初始化
 void motor_init(void);
 
+// 变量定义部分
+Trig_Components Vector_Components;
+u8 bSector;
+u8 PWM4Direction = PWM2_MODE;
+s16 cnt = S16_MIN; // 开环调试变量
+
+// FOC相关
+Curr_Components Stat_Curr_a_b;
+Curr_Components Stat_Curr_alfa_beta;
+Curr_Components Stat_Curr_q_d;
+Curr_Components Stat_Curr_q_d_ref_ref; // 电流环给定，用于电流环dq给定和前馈电流控制给定
+Volt_Components Stat_Volt_q_d;
+Volt_Components Stat_Volt_alfa_beta;
+PID_Struct_t PID_Torque_InitStructure; // 转矩
+PID_Struct_t PID_Flux_InitStructure;   // 磁通
+PID_Struct_t PID_Speed_InitStructure;  // 速度
+
 #endif
