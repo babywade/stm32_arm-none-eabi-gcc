@@ -364,3 +364,119 @@ const s16 hSin_Cos_Table[256] = {\
     0x7FD8,0x7FE1,0x7FE9,0x7FF0,0x7FF5,0x7FF9,0x7FFD,0x7FFE
 };
 
+Curr_Components Clarke(Curr_Components Curr_Input) {
+    Curr_Components Curr_Output;
+    s32 qIa_divSQRT3_tmp;
+    s32 qIb_divSQRT3_tmp; // 定义32位有符号数，用来暂存Q30格式
+    s16 qIa_divSQRT3;
+    s16 qIb_divSQRT3;
+
+    Curr_Output.qI_Component1 = Curr_Input.qI_Component1; // Ialpha = Ia
+
+    qIa_divSQRT3_tmp = divSQRT_3 * Curr_Input.qI_Component1; // 计算Ia/根3
+    qIa_divSQRT3_tmp /= 32678; // 右移15位
+    qIb_divSQRT3_tmp = divSQRT_3 * Curr_Input.qI_Component2; // 计算Ib/根3
+    qIb_divSQRT3_tmp /= 32678;
+
+    qIa_divSQRT3 = ((s16)(qIa_divSQRT3_tmp));
+    qIb_divSQRT3 = ((s16)(qIb_divSQRT3_tmp));
+
+    Curr_Output.qI_Component2 = (-(qIa_divSQRT3)-(qIb_divSQRT3)-(qIb_divSQRT3)); // Ibeta = -(2*Ib+Ia)/sqrt(3)
+    return Curr_Output;
+}
+
+// 本函数返回输入角度的cos和sin函数值
+// hAngle=0,转子电角度=0度.hAngle=S16_MAX,转子电角度=180度.hAngle=S16_MIN,转子电角度=-180度
+Trig_Components Trig_Functions(s16 hAngle) {
+    u16 hindex;
+    Trig_Components Local_Components;
+
+    // 10 bit index computation
+    hindex = (u16)(hAngle + 32678);
+    hindex /= 16;
+
+    switch (hindex & SIN_MASK) {
+        case U0_90:
+            Local_Components.hSin = hSin_Cos_Table[(u8)(hindex)];
+            Local_Components.hCos = hSin_Cos_Table[(u8)(0xFF-(u8)(hindex))];
+            break;
+        case U90_180:
+            Local_Components.hSin = hSin_Cos_Table[(u8)(0xFF-(u8)(hindex))];
+            Local_Components.hCos = -hSin_Cos_Table[(u8)(hindex)];
+            break;
+        case U180_270:
+            Local_Components.hSin = -hSin_Cos_Table[(u8)(hindex)];
+            Local_Components.hCos = -hSin_Cos_Table[(u8)(0xFF-(u8)(hindex))];
+            break;
+        case U270_360:
+            Local_Components.hSin = -hSin_Cos_Table[(u8)(0xFF-(u8)(hindex))];
+            Local_Components.hCos = hSin_Cos_Table[(u8)(hindex)];
+            break;
+        default:
+            break;
+    }
+
+    return Local_Components;
+}
+
+// Park变换，输入电角度、Ialpha和Ibeta，经过Park变换得到Iq、Id
+Curr_Components Park(Curr_Components Curr_Input, s16 Theta)       
+{ 
+    Curr_Components Curr_Output;
+    s32 qId_tmp_1, qId_tmp_2;
+    s32 qIq_tmp_1, qIq_tmp_2;     
+    s16 qId_1, qId_2;  
+    s16 qIq_1, qIq_2;  
+    
+    Vector_Components = Trig_Functions(Theta);                      //计算电角度的cos和sin
+    
+    qIq_tmp_1 = Curr_Input.qI_Component1 * Vector_Components.hCos;  //计算Ialpha*cosθ	
+    qIq_tmp_1 /= 32768;
+    qIq_tmp_2 = Curr_Input.qI_Component2 *Vector_Components.hSin;   //计算Ibeta*sinθ
+    qIq_tmp_2 /= 32768;
+    
+    qIq_1 = ((s16)(qIq_tmp_1));
+    qIq_2 = ((s16)(qIq_tmp_2));
+    Curr_Output.qI_Component1 = ((qIq_1)-(qIq_2));	//Iq=Ialpha*cosθ- Ibeta*sinθ
+    
+    qId_tmp_1 = Curr_Input.qI_Component1 * Vector_Components.hSin;  //计算Ialpha*sinθ
+    qId_tmp_1 /= 32768;
+    qId_tmp_2 = Curr_Input.qI_Component2 * Vector_Components.hCos;  //计算Ibeta*cosθ
+    qId_tmp_2 /= 32768;
+    
+    qId_1 = (s16)(qId_tmp_1);		 
+    qId_2 = (s16)(qId_tmp_2);					
+    Curr_Output.qI_Component2 = ((qId_1)+(qId_2));   //Id=Ialpha*sinθ+ Ibeta*cosθ
+    
+    return (Curr_Output);
+}
+
+// 反park变换，输入Uq、Ud得到Ualpha、Ubeta
+Volt_Components Rev_Park(Volt_Components Volt_Input)
+{ 	
+    s32 qValpha_tmp1,qValpha_tmp2,qVbeta_tmp1,qVbeta_tmp2;
+    s16 qValpha_1,qValpha_2,qVbeta_1,qVbeta_2;
+    Volt_Components Volt_Output;
+    
+    qValpha_tmp1 = Volt_Input.qV_Component1 * Vector_Components.hCos;  //Uq*cosθ
+    qValpha_tmp1 /= 32768; 
+    qValpha_tmp2 = Volt_Input.qV_Component2 * Vector_Components.hSin;  //Ud*sinθ
+    qValpha_tmp2 /= 32768;
+            
+    qValpha_1 = (s16)(qValpha_tmp1);		
+    qValpha_2 = (s16)(qValpha_tmp2);			
+    Volt_Output.qV_Component1 = ((qValpha_1)+(qValpha_2));             //Ualpha=Uq*cosθ+ Ud*sinθ
+    
+    qVbeta_tmp1 = Volt_Input.qV_Component1 * Vector_Components.hSin;   //Uq*sinθ
+    qVbeta_tmp1 /= 32768;  
+    qVbeta_tmp2 = Volt_Input.qV_Component2 * Vector_Components.hCos;   //Ud*cosθ
+    qVbeta_tmp2 /= 32768;
+    
+    qVbeta_1 = (s16)(qVbeta_tmp1);				
+    qVbeta_2 = (s16)(qVbeta_tmp2);  				
+    Volt_Output.qV_Component2 = -(qVbeta_1)+(qVbeta_2);                //Ubeta=Ud*cosθ- Uq*sinθ
+    
+    return(Volt_Output);
+}
+
+
