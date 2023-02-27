@@ -1,6 +1,8 @@
 #ifndef __FOC_H
 #define __FOC_H
 
+#include "core_cm3.h"
+
 #define CKTIM 168000000 // 定时器时钟频率168M Hz
 #define PWM_PRSC
 #define PWM_FREQ 15000 // PWM频率15K Hz

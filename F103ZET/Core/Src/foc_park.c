@@ -479,4 +479,89 @@ Volt_Components Rev_Park(Volt_Components Volt_Input)
     return(Volt_Output);
 }
 
+Curr_Components SVPWM_3ShuntGetPhaseCurrentValues() {
+    Curr_Components Local_Stator_Currents;
+    s32 wAux;
+
+    switch (bSector) {
+        case 4:
+        case 5: // Current on phase C not accessible
+            wAux = (s32)(hPhaseA_Offset) - (HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1)<<1);
+            if (wAux < S16_MIN) {
+                Local_Stator_Currents.qI_Component1 = S16_MIN;
+            } else if (wAux > S16_MAX) {
+                Local_Stator_Currents.qI_Component1 = S16_MAX;
+            } else {
+                Local_Stator_Currents.qI_Component1 = wAux;
+            }
+
+            // Ib = (hPhaseBOffset) - (ADC Channel 12 value)
+            wAux = (s32)(hPhaseB_Offset) - (HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_2)<<1);
+            // Saturation of Ib
+            if (wAux < S16_MIN) {
+                Local_Stator_Currents.qI_Component2 = S16_MIN;
+            } else if (wAux > S16_MAX) {
+                Local_Stator_Currents.qI_Component2 = S16_MAX;
+            } else {
+                Local_Stator_Currents.qI_Component2 = wAux;
+            }
+            break;
+        
+        case 6: // Current on phase A not accessible
+            // Ib = (hPhaseBOffset) - (ADC Channel 12 value)
+            wAux = (s32)(hPhaseB_Offset) - (HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_2)<<1);
+            // Saturation of Ib
+            if (wAux < S16_MIN) {
+                Local_Stator_Currents.qI_Component2 = S16_MIN;
+            } else if (wAux > S16_MAX) {
+                Local_Stator_Currents.qI_Component2 = S16_MAX;
+            } else {
+                Local_Stator_Currents.qI_Component2 = wAux;
+            }
+
+            // Ia = -Ic-Ib
+            wAux = (HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_3)<<1)
+                    -hPhaseC_OffSet-Local_Stator_Currents.qI_Component2;
+            // Saturation of Ia
+            if (wAux < S16_MIN) {
+                Local_Stator_Currents.qI_Component1 = S16_MIN;
+            } else if (wAux > S16_MAX) {
+                Local_Stator_Currents.qI_Component1 = S16_MAX;
+            } else {
+                Local_Stator_Currents.qI_Component1 = wAux;
+            }
+            break;
+
+        case 2:
+        case 3: // Current on phase A not accessible
+            // Ia = (hPhaseAOffset) - (ADC Channel 11 value)
+            wAux = (s32)(hPhaseA_Offset) - (HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1)<<1);
+            // Saturation of Ia
+            if (wAux < S16_MIN) {
+                Local_Stator_Currents.qI_Component1 = S16_MIN;
+            } else if (wAux > S16_MAX) {
+                Local_Stator_Currents.qI_Component1 = S16_MAX;
+            } else {
+                Local_Stator_Currents.qI_Component1 = wAux;
+            }
+
+            // Ib = -Ic-Ia
+            wAux = (HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_3)<<1)
+                    -hPhaseC_OffSet-Local_Stator_Currents.qI_Component1;
+            // Saturation of Ib
+            if (wAux > S16_MAX) {
+                Local_Stator_Currents.qI_Component2 = S16_MAX;
+            } else if (wAux > S16_MIN) {
+                Local_Stator_Currents.qI_Component2 = S16_MIN;
+            } else {
+                Local_Stator_Currents.qI_Component2 = wAux;
+            }
+            break;
+        default:
+            break;
+    }
+    
+    return Local_Stator_Currents;
+}
+
 

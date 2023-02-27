@@ -47,6 +47,8 @@ Curr_Components Park(Curr_Components Curr_Input, s16 Theta);
 Volt_Components Rev_Park(Volt_Components Volt_Input);
 // SVPWM
 void SVPWM_3ShuntCalDutyCycles(Volt_Components Stat_Volt_Input);
+// 3电阻采样电流值
+Curr_Components SVPWM_3ShuntGetPhaseCurrentValues();
 // FOC核心
 void FOC_Model(void);
 // 系统初始化
