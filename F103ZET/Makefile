@@ -22,7 +22,7 @@ TARGET = F103ZET
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -Og
+OPT = -Og -ffreestanding
 
 
 #######################################

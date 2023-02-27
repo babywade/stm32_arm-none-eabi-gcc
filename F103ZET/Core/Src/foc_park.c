@@ -14,7 +14,7 @@ void motor_init() {
 	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3,0);
     // 通道4触发ADC采样
     HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
-	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4,1000);//初始占空比应该多少？
+	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4,1000); // 初始占空比应该多少？
     // 开启ADC注入转换
     HAL_ADCEx_InjectedStart_IT(&hadc1);
     // 使能ABC编码器
@@ -560,7 +560,7 @@ Curr_Components SVPWM_3ShuntGetPhaseCurrentValues() {
         default:
             break;
     }
-    
+
     return Local_Stator_Currents;
 }
 
