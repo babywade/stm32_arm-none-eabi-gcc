@@ -53,6 +53,10 @@ Curr_Components SVPWM_3ShuntGetPhaseCurrentValues();
 void FOC_Model(void);
 // 系统初始化
 void motor_init(void);
+// PID初始化
+void PID_Init (PID_Struct_t *PID_Torque, PID_Struct_t *PID_Flux, PID_Struct_t *PID_Speed);
+// PID调节器
+s16 PID_Regulator(s16 hReference, s16 hPresentFeedback, PID_Struct_t *PID_Struct);
 
 // 变量定义部分
 Trig_Components Vector_Components;

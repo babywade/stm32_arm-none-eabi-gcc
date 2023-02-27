@@ -1,5 +1,40 @@
 #include "foc_park.h"
 
+volatile s16 hTorque_Reference; // q轴设定值
+volatile s16 hFlux_Reference; // d轴设定值
+volatile s16 hSpeed_Reference; // 速度环设定值
+
+// 扭矩的PID参数，即q轴
+#define PID_TORQUE_REFERENCE (s16)000 // q轴的设定值，PID的目的就是要让测量的q轴值与设定值误差为0
+#define PID_TORQUE_KP_DEFAULT (s16)2.35 // Kp默认值
+#define PID_TORQUE_KI_DEFAULT (s16)880 // Ki默认值
+#define PID_TORQUE_KD_DEFAULT (s16)0 // Kd默认值
+
+// 转子磁通的PID参数，即d轴
+#define PID_FLUX_REFERENCE (s16)000 // d轴的设定值
+#define PID_FLUX_KP_DEFAULT (s16)2.35 // Kp默认值
+#define PID_FLUX_KI_DEFAULT (s16)880 // Ki默认值
+#define PID_FLUX_KD_DEFAULT (s16)0 // Kd默认值
+
+// q轴和d轴的PID参数放大倍数
+#define TF_KPDIV ((u16)(1024)) // Kp、Ki、Kd需要先放大，再缩小。
+#define TF_KIDIV ((u16)(16384)) // 16384
+#define TF_KDDIV ((u16)(8192))
+
+// 速度环的PID参数
+#define PID_SPEED_REFERENCE_RPM (s16)1000 // 电机的设定转速
+#define PID_SPEED_REFERENCE (u16)(PID_SPEED_REFERENCE_RPM/6) // 电机转速和速度环的设定值一般都不相等，电机不同，它们的关系也不同
+#define PID_SPEED_KP_DEFAULT (s16)50
+#define PID_SPEED_KI_DEFAULT (s16)10
+#define PID_SPEED_KD_DEFAULT (s16)0
+#define NOMINAL_CURRENT (s16)18000 // motor nominal current (0-pk),3倍的额定电流
+#define IQMAX NOMINAL_CURRENT // 速度环输出最大值
+
+// 速度环PID参数的放大倍数
+#define SP_KPDIV ((u16)(16))
+#define SP_KIDIV ((u16)(256))
+#define SP_KDDIV ((u16)(16))
+
 void motor_init() {
     // PWM初始化
     HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);

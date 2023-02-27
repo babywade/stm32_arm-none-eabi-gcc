@@ -103,8 +103,8 @@ typedef unsigned           int uintptr_t;
 #endif
 
     /* 7.18.1.5 greatest-width integer types */
-typedef   signed     __LONGLONG intmax_t;
-typedef unsigned     __LONGLONG uintmax_t;
+// typedef   signed     __LONGLONG intmax_t;
+// typedef unsigned     __LONGLONG uintmax_t;
 
 
 #if !defined(__cplusplus) || defined(__STDC_LIMIT_MACROS)
