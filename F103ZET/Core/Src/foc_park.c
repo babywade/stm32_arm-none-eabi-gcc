@@ -35,6 +35,118 @@ volatile s16 hSpeed_Reference; // 速度环设定值
 #define SP_KIDIV ((u16)(256))
 #define SP_KDDIV ((u16)(16))
 
+void PID_Init (PID_Struct_t *PID_Torque, PID_Struct_t *PID_Flux, PID_Struct_t *PID_Speed) {
+    hTorque_Reference = PID_TORQUE_REFERENCE; // q轴设定值初始化
+    // 控制扭矩的PID参数，即q轴大小
+    PID_Torque->hKp_Gain = PID_TORQUE_KP_DEFAULT; // Kp参数，放大了hKp_Division倍。调节结果除以hKp_Divisor才是真实结果
+    PID_Torque->hKp_Divisor = TF_KPDIV; // Kp参数分数因子
+    PID_Torque->hKi_Gain = PID_TORQUE_KI_DEFAULT;      // Ki参数
+    PID_Torque->hKi_Divisor = TF_KIDIV;                // Ki参数分数因子
+    PID_Torque->hKd_Gain = PID_TORQUE_KD_DEFAULT;      // Kd参数
+    PID_Torque->hKd_Divisor = TF_KDDIV;                // Kd参数分数因子
+    PID_Torque->wPreviousError = 0;                    // 上次计算的误差值，用于D调节
+    PID_Torque->hLower_Limit_Output=S16_MIN;           // PID输出下限幅
+    PID_Torque->hUpper_Limit_Output= S16_MAX;          // PID输出上限幅
+    PID_Torque->wLower_Limit_Integral = S16_MIN * TF_KIDIV;  // I调节的下限福
+    PID_Torque->wUpper_Limit_Integral = S16_MAX * TF_KIDIV;  // I调节的上限幅
+    PID_Torque->wIntegral = 0;                         // I调节的结果，因为是积分，所以要一直累积
+
+    hFlux_Reference = PID_FLUX_REFERENCE; // 对于SM-PMSM电机，Id = 0
+    // 控制转子磁通的PID参数，即d轴大小
+    PID_Flux->hKp_Gain    = PID_FLUX_KP_DEFAULT;
+    PID_Flux->hKp_Divisor = TF_KPDIV;
+    PID_Flux->hKi_Gain = PID_FLUX_KI_DEFAULT;
+    PID_Flux->hKi_Divisor = TF_KIDIV;
+    PID_Flux->hKd_Gain = PID_FLUX_KD_DEFAULT;
+    PID_Flux->hKd_Divisor = TF_KDDIV;
+    PID_Flux->wPreviousError = 0;
+    PID_Flux->hLower_Limit_Output=S16_MIN;   
+    PID_Flux->hUpper_Limit_Output= S16_MAX;   
+    PID_Flux->wLower_Limit_Integral = S16_MIN * TF_KIDIV;
+    PID_Flux->wUpper_Limit_Integral = S16_MAX * TF_KIDIV;
+    PID_Flux->wIntegral = 0;
+
+    hSpeed_Reference = PID_SPEED_REFERENCE;
+    // 速度环的PID参数
+    PID_Speed->hKp_Gain    = PID_SPEED_KP_DEFAULT;
+    PID_Speed->hKp_Divisor = SP_KPDIV;
+    PID_Speed->hKi_Gain = PID_SPEED_KI_DEFAULT;
+    PID_Speed->hKi_Divisor = SP_KIDIV;
+    PID_Speed->hKd_Gain = PID_SPEED_KD_DEFAULT;
+    PID_Speed->hKd_Divisor = SP_KDDIV;
+    PID_Speed->wPreviousError = 0;
+    PID_Speed->hLower_Limit_Output= -IQMAX;   
+    PID_Speed->hUpper_Limit_Output= IQMAX;   
+    PID_Speed->wLower_Limit_Integral = -IQMAX * SP_KIDIV;
+    PID_Speed->wUpper_Limit_Integral = IQMAX * SP_KIDIV;
+    PID_Speed->wIntegral = 0;
+}
+
+// #define DIFFERENTIAL_TERM_ENABLED // 不使用PID的D调节
+typedef signed long long s64;
+s16 PID_Regulator(s16 hReference, s16 hPresentFeedback, PID_Struct_t *PID_Struct) {
+    s32 wError, wProportional_Term, wIntegral_Term, houtput_32;
+    s64 dwAux;
+#ifdef DIFFERENTIAL_TERM_ENABLED // 如果使能了D调节
+    s32 wDifferential_Term;
+#endif
+
+    wError = (s32)(hReference - hPresentFeedback); // 设定值-反馈值，取得需要误差量delta_e
+    wProportional_Term = PID_Struct->hKp_Gain * wError; // PID的P调节，即比例放大调节：wP = Kp * delta_e
+
+    if (PID_Struct->hKi_Gain == 0)                       //下面进行PID的I调节，即误差的累积调节
+    {
+        PID_Struct->wIntegral = 0;                       //如果I参数=0，I调节就=0 
+    }
+    else
+    {
+        wIntegral_Term = PID_Struct->hKi_Gain * wError;		    //wI = Ki * delta_e	，本次积分项
+        dwAux = PID_Struct->wIntegral + (s64)(wIntegral_Term);	//积分累积的调节量 = 以前的积分累积量 + 本次的积分项
+ 
+        if (dwAux > PID_Struct->wUpper_Limit_Integral)		    //对PID的I调节做限幅
+        {
+            PID_Struct->wIntegral = PID_Struct->wUpper_Limit_Integral;	//上限
+        }
+        else if (dwAux < PID_Struct->wLower_Limit_Integral)				//下限
+        {
+            PID_Struct->wIntegral = PID_Struct->wLower_Limit_Integral;
+        }
+        else
+        {
+            PID_Struct->wIntegral = (s32)(dwAux);		          //不超限, 更新积分累积项为dwAux
+        }
+    }
+#ifdef DIFFERENTIAL_TERM_ENABLED						          //如果使能了D调节
+	{
+	s32 wtemp;
+  
+	wtemp = wError - PID_Struct->wPreviousError;			      //取得上次和这次的误差之差
+	wDifferential_Term = PID_Struct->hKd_Gain * wtemp;	          //D调节结果，wD = Kd * delta_d
+	PID_Struct->wPreviousError = wError;    				      //更新上次误差，用于下次运算	
+ 
+	}
+	houtput_32 = (wProportional_Term/PID_Struct->hKp_Divisor+     //输出总的调节量 = 比例调节量/分数因子 +
+                  PID_Struct->wIntegral/PID_Struct->hKi_Divisor + //				 + 积分调节量/分数因子
+                  wDifferential_Term/PID_Struct->hKd_Divisor); 	  //				 + 微分调节量/分数因子
+ 
+#else  	
+	//把P调节和I调节结果除以分数因子再相加，得到PI控制的结果
+    houtput_32 = (wProportional_Term/PID_Struct->hKp_Divisor + PID_Struct->wIntegral/PID_Struct->hKi_Divisor);       
+#endif
+    if (houtput_32 >= PID_Struct->hUpper_Limit_Output)	   //PI控制结果限幅
+    {
+        return(PID_Struct->hUpper_Limit_Output);
+    }
+    else if (houtput_32 < PID_Struct->hLower_Limit_Output) //下限
+    {
+        return(PID_Struct->hLower_Limit_Output);
+    }
+    else
+    {
+        return((s16)(houtput_32)); 						   //不超限。输出结果 houtput_32
+    }
+}
+
 void motor_init() {
     // PWM初始化
     HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
