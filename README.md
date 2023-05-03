@@ -1,6 +1,6 @@
 # stm32_arm-none-eabi-gcc
 
-using cubemx and arm-none-eabi-gcc to develop stm32 project(with rtos and without rtos).
+using cubemx and arm-none-eabi-gcc to develop stm32 project(with rtos and without rtos). stm32开发的全开源解决方案。
 
 cd F103ZET
 
